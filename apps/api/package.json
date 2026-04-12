@@ -21,8 +21,8 @@
   "devDependencies": {
     "@gstforge/tsconfig": "workspace:*",
     "@types/node": "^20.12.12",
-    "@types/react": "npm:types-react@rc",
-    "@types/react-dom": "npm:types-react-dom@rc",
+    "@types/react": "19.0.0",
+    "@types/react-dom": "19.0.0",
     "typescript": "^5.4.5"
   }
 }
