@@ -1,23 +1,29 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, Input, Label, Button } from "@gstforge/ui";
-import { Invoice, InvoiceItem, HSN_SUGGESTIONS } from "@gstforge/types";
-import { calculateInvoiceTotals, formatCurrency } from "@gstforge/utils";
+import { InvoiceSchema, type Invoice, type InvoiceItem } from "@gstforge/types";
+import { calculateInvoiceTotals, formatCurrency, generateInvoicePDF } from "@gstforge/utils";
 import { Plus, Trash2, FileText, Download } from "lucide-react";
 import { useStore } from "../../hooks/use-store";
+import { createInvoice } from "../../lib/api";
+import { toast } from "sonner";
 
 export function InvoiceBuilder() {
-  const { businessDetails, currentInvoice, setCurrentInvoice } = useStore();
+  const { businessDetails, currentInvoice, setCurrentInvoice, addInvoice, setUserCredits } = useStore();
   const [items, setItems] = useState<InvoiceItem[]>(currentInvoice.items || []);
   const [customer, setCustomer] = useState(currentInvoice.customer || { name: "", address: "", state: "", gstin: "" });
   const [placeOfSupply, setPlaceOfSupply] = useState(currentInvoice.placeOfSupply || "");
   const [invoiceNumber, setInvoiceNumber] = useState(currentInvoice.invoiceNumber || `INV-${Date.now().toString().slice(-6)}`);
-
-  const totals = useMemo(() => {
-    const inv: any = { items, customer, placeOfSupply, invoiceNumber, date: new Date().toISOString() };
-    return calculateInvoiceTotals(inv, businessDetails?.state || "");
-  }, [items, customer, placeOfSupply, invoiceNumber, businessDetails]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const invoiceDraft: Invoice = {
+    invoiceNumber,
+    date: new Date().toISOString(),
+    items,
+    customer,
+    placeOfSupply,
+  };
+  const totals = calculateInvoiceTotals(invoiceDraft, businessDetails?.state || "");
 
   const addItem = () => {
     const newItem: InvoiceItem = {
@@ -39,6 +45,33 @@ export function InvoiceBuilder() {
 
   const updateItem = (id: string, field: keyof InvoiceItem, value: any) => {
     setItems(items.map((i) => (i.id === id ? { ...i, [field]: value } : i)));
+  };
+
+  const handleGenerateInvoice = async () => {
+    if (!businessDetails) {
+      toast.error("Complete onboarding before generating invoices.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const validatedInvoice = InvoiceSchema.parse(invoiceDraft);
+      setCurrentInvoice(validatedInvoice);
+
+      const result = await createInvoice({
+        businessDetails,
+        invoiceData: validatedInvoice,
+      });
+
+      addInvoice(result.invoice);
+      setUserCredits(result.creditsRemaining);
+      generateInvoicePDF(validatedInvoice, businessDetails);
+      toast.success("Invoice created and PDF downloaded.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to create invoice");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -71,6 +104,10 @@ export function InvoiceBuilder() {
             <div className="space-y-2">
               <Label>Customer Name</Label>
               <Input value={customer.name} onChange={(e) => setCustomer({...customer, name: e.target.value})} />
+            </div>
+            <div className="space-y-2">
+              <Label>Customer Address</Label>
+              <Input value={customer.address} onChange={(e) => setCustomer({...customer, address: e.target.value})} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -233,7 +270,7 @@ export function InvoiceBuilder() {
             </div>
           </CardContent>
           <CardFooter className="bg-slate-800 p-4">
-            <Button className="w-full bg-indigo-600 hover:bg-indigo-700 h-11">
+            <Button className="w-full bg-indigo-600 hover:bg-indigo-700 h-11" onClick={handleGenerateInvoice} disabled={isSubmitting}>
               <Download className="w-4 h-4 mr-2" /> Generate & Download PDF
             </Button>
           </CardFooter>

@@ -3,13 +3,31 @@
 import { useStore } from "../../hooks/use-store";
 import { OnboardingWizard } from "../onboarding/wizard";
 import { InvoiceBuilder } from "../invoice/builder";
-import { Button } from "@gstforge/ui";
-import { LayoutDashboard, FileText, CreditCard, Settings, LogOut, Zap } from "lucide-react";
-import { useState } from "react";
+import { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@gstforge/ui";
+import { LayoutDashboard, FileText, CreditCard, Settings, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { purchaseCredits } from "../../lib/api";
+import { toast } from "sonner";
+import type { AuthSession } from "../../lib/auth";
 
-export default function UserDashboard() {
-  const { businessDetails, userCredits } = useStore();
+type UserDashboardProps = {
+  session: AuthSession;
+};
+
+export default function UserDashboard({ session }: UserDashboardProps) {
+  const router = useRouter();
+  const { businessDetails, userCredits, setUserCredits, invoiceHistory, setUserProfile } = useStore();
   const [activeTab, setActiveTab] = useState("new-invoice");
+
+  useEffect(() => {
+    setUserProfile({
+      userId: session.userId,
+      authUserId: session.authUserId,
+      email: session.email,
+      name: session.name ?? undefined,
+    });
+  }, [session, setUserProfile]);
 
   if (!businessDetails) {
     return <OnboardingWizard />;
@@ -21,6 +39,33 @@ export default function UserDashboard() {
     { id: "credits", label: "Credits", icon: CreditCard },
     { id: "settings", label: "Settings", icon: Settings },
   ];
+
+  const handleBuyCredits = async (credits: number, amount: number) => {
+    if (!businessDetails) {
+      toast.error("Complete onboarding before purchasing credits.");
+      return;
+    }
+
+    try {
+      const result = await purchaseCredits({
+        businessDetails,
+        creditsAdded: credits,
+        amount,
+      });
+
+      setUserCredits(result.creditsRemaining);
+      toast.success(`${credits} credits added successfully.`);
+      setActiveTab("new-invoice");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to add credits");
+    }
+  };
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/sign-in");
+    router.refresh();
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -47,9 +92,13 @@ export default function UserDashboard() {
           ))}
         </nav>
         <div className="p-4 border-t">
-          <Button variant="ghost" className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50">
-            <LogOut className="w-4 h-4 mr-2" /> Sign Out
-          </Button>
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-slate-900">{session.name ?? "GSTForge User"}</p>
+              <p className="truncate text-xs text-slate-500">{session.email}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleLogout}>Sign Out</Button>
+          </div>
         </div>
       </aside>
 
@@ -61,19 +110,41 @@ export default function UserDashboard() {
             {navItems.find(n => n.id === activeTab)?.label}
           </h2>
           <div className="flex items-center gap-4">
+            <p className="hidden text-sm text-slate-500 md:block">
+              {session.email}
+            </p>
             <div className={`px-3 py-1 rounded-full text-xs font-bold border ${userCredits < 3 ? 'bg-red-50 border-red-200 text-red-600 shadow-sm animate-pulse' : 'bg-green-50 border-green-200 text-green-600'}`}>
               Credits: {userCredits}
             </div>
-            <Button size="sm" className="bg-indigo-600">Buy Credits</Button>
+            <Button size="sm" className="bg-indigo-600" onClick={() => setActiveTab("credits")}>Buy Credits</Button>
           </div>
         </header>
 
         <div className="flex-1 overflow-auto">
           {activeTab === "new-invoice" && <InvoiceBuilder />}
           {activeTab === "history" && (
-            <div className="p-8 text-center text-slate-500">
-              <FileText className="w-12 h-12 mx-auto mb-4 opacity-20" />
-              <p>No invoices generated yet.</p>
+            <div className="p-8 space-y-4">
+              {invoiceHistory.length === 0 ? (
+                <div className="text-center text-slate-500">
+                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                  <p>No invoices generated yet.</p>
+                </div>
+              ) : (
+                invoiceHistory.map((invoice) => (
+                  <Card key={invoice.id}>
+                    <CardContent className="flex items-center justify-between p-6">
+                      <div>
+                        <p className="font-semibold">{invoice.invoiceNumber}</p>
+                        <p className="text-sm text-slate-500">{invoice.customerName}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">₹{invoice.total.toFixed(2)}</p>
+                        <p className="text-sm capitalize text-slate-500">{invoice.status}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
           )}
           {activeTab === "credits" && (
@@ -94,7 +165,13 @@ export default function UserDashboard() {
                       <p className="text-3xl font-bold">{plan.price}</p>
                     </CardContent>
                     <CardFooter>
-                      <Button className="w-full" variant={plan.popular ? "default" : "outline"}>Buy Now</Button>
+                      <Button
+                        className="w-full"
+                        variant={plan.popular ? "default" : "outline"}
+                        onClick={() => handleBuyCredits(plan.credits, Number(plan.price.replace("₹", "")))}
+                      >
+                        Buy Now
+                      </Button>
                     </CardFooter>
                   </Card>
                 ))}

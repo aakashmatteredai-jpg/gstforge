@@ -1,4 +1,7 @@
 import React from "react";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { Button } from "@gstforge/ui";
 import { 
   ArrowRight, 
@@ -38,8 +41,10 @@ export default function LandingPage() {
             <a className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors" href="#pricing">Pricing</a>
           </nav>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" className="hidden sm:inline-flex">Log In</Button>
-            <Link href="/dashboard">
+            <Link href="/sign-in">
+              <Button variant="ghost" size="sm" className="hidden sm:inline-flex">Log In</Button>
+            </Link>
+            <Link href="/sign-up">
               <Button size="sm" className="shadow-lg shadow-primary/20">Get Started</Button>
             </Link>
           </div>
@@ -67,7 +72,7 @@ export default function LandingPage() {
                 generates audit-ready PDFs, and keeps your finances crystal clear.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                <Link href="/dashboard">
+                <Link href="/sign-up">
                   <Button size="lg" className="h-14 px-10 text-lg font-bold rounded-2xl shadow-xl shadow-primary/30">
                     Build Your First Invoice <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
@@ -183,7 +188,7 @@ export default function LandingPage() {
                 <PricingItem text="Priority Support" />
                 <PricingItem text="HSN/SAC Validation" />
               </ul>
-              <Link href="/dashboard" className="w-full">
+              <Link href="/sign-up" className="w-full">
                 <Button size="lg" className="w-full h-14 text-lg font-bold bg-white text-slate-900 hover:bg-slate-200">Get Started Now</Button>
               </Link>
             </div>
@@ -237,7 +242,9 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode, titl
   return (
     <div className="p-8 rounded-3xl border bg-card hover:bg-accent/5 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-300 group">
       <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-        {React.cloneElement(icon as React.ReactElement, { className: "h-6 w-6" })}
+        {React.isValidElement<{ className?: string }>(icon)
+          ? React.cloneElement(icon, { className: "h-6 w-6" })
+          : icon}
       </div>
       <h3 className="text-xl font-bold mb-3">{title}</h3>
       <p className="text-muted-foreground leading-relaxed leading-relaxed">{description}</p>

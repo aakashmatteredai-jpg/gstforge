@@ -9,7 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@clerk/nextjs": "latest",
     "@gstforge/prisma": "workspace:*",
     "@gstforge/types": "workspace:*",
     "@gstforge/ui": "workspace:*",
