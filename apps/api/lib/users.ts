@@ -10,6 +10,46 @@ type ResolveUserInput = {
 
 const FALLBACK_EMAIL = "demo@gstforge.local";
 
+function startOfToday() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
+
+async function refreshDailyCredits(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  const today = startOfToday();
+  const lastCreditRefreshAt = (user as any).lastCreditRefreshAt as Date | null;
+
+  if (!lastCreditRefreshAt || lastCreditRefreshAt < today) {
+    try {
+      return await prisma.user.update({
+        where: { id: userId },
+        data: {
+          credits: 50,
+          lastCreditRefreshAt: new Date(),
+        } as any,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+
+      // Gracefully handle the period before `prisma db push` has added the new field.
+      if (!message.includes("lastCreditRefreshAt")) {
+        throw error;
+      }
+    }
+  }
+
+  return user;
+}
+
 export async function resolveOrCreateUser(input: ResolveUserInput) {
   let user = input.userId
     ? await prisma.user.findUnique({ where: { id: input.userId } })
@@ -32,6 +72,7 @@ export async function resolveOrCreateUser(input: ResolveUserInput) {
         email,
         name: input.businessDetails?.name ?? "GSTForge Demo User",
         businessDetails: input.businessDetails,
+        credits: 50,
       },
     });
   } else if (input.businessDetails) {
@@ -44,5 +85,5 @@ export async function resolveOrCreateUser(input: ResolveUserInput) {
     });
   }
 
-  return user;
+  return refreshDailyCredits(user.id);
 }

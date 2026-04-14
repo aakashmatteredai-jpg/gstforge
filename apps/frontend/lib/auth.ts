@@ -80,12 +80,35 @@ export async function getCurrentUser() {
     return null;
   }
 
-  const user = await prisma.user.findUnique({
+  let user = await prisma.user.findUnique({
     where: { id: session.userId },
   });
 
   if (!user) {
     return null;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const lastCreditRefreshAt = (user as any).lastCreditRefreshAt as Date | null;
+
+  if (!lastCreditRefreshAt || lastCreditRefreshAt < today) {
+    try {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          credits: 50,
+          lastCreditRefreshAt: new Date(),
+        } as any,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+
+      // Gracefully handle the period before `prisma db push` has added the new field.
+      if (!message.includes("lastCreditRefreshAt")) {
+        throw error;
+      }
+    }
   }
 
   return {

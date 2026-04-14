@@ -3,11 +3,10 @@
 import { useStore } from "../../hooks/use-store";
 import { OnboardingWizard } from "../onboarding/wizard";
 import { InvoiceBuilder } from "../invoice/builder";
-import { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Input, Label } from "@gstforge/ui";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@gstforge/ui";
 import { LayoutDashboard, FileText, CreditCard, Settings, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { purchaseCredits } from "../../lib/api";
 import { toast } from "sonner";
 import type { AuthSession } from "../../lib/auth";
 import type { BusinessDetails } from "@gstforge/types";
@@ -22,8 +21,6 @@ export default function UserDashboard({ session, initialBusinessDetails, initial
   const router = useRouter();
   const { businessDetails, userCredits, setUserCredits, invoiceHistory, setUserProfile, setBusinessDetails } = useStore();
   const [activeTab, setActiveTab] = useState("new-invoice");
-  const [customCredits, setCustomCredits] = useState("25");
-  const [isAddingCredits, setIsAddingCredits] = useState(false);
   const resolvedBusinessDetails = businessDetails ?? initialBusinessDetails;
 
   useEffect(() => {
@@ -52,35 +49,6 @@ export default function UserDashboard({ session, initialBusinessDetails, initial
     { id: "credits", label: "Credits", icon: CreditCard },
     { id: "settings", label: "Settings", icon: Settings },
   ];
-
-  const handleBuyCredits = async (credits: number) => {
-    if (!resolvedBusinessDetails) {
-      toast.error("Complete onboarding before purchasing credits.");
-      return;
-    }
-
-    if (!Number.isFinite(credits) || credits <= 0) {
-      toast.error("Enter a valid credit amount.");
-      return;
-    }
-
-    try {
-      setIsAddingCredits(true);
-      const result = await purchaseCredits({
-        businessDetails: resolvedBusinessDetails,
-        creditsAdded: credits,
-        amount: credits,
-      });
-
-      setUserCredits(result.creditsRemaining);
-      toast.success(`${credits} credits added successfully.`);
-      setActiveTab("new-invoice");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to add credits");
-    } finally {
-      setIsAddingCredits(false);
-    }
-  };
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -137,7 +105,6 @@ export default function UserDashboard({ session, initialBusinessDetails, initial
             <div className={`px-3 py-1 rounded-full text-xs font-bold border ${userCredits < 3 ? 'bg-red-50 border-red-200 text-red-600 shadow-sm animate-pulse' : 'bg-green-50 border-green-200 text-green-600'}`}>
               Credits: {userCredits}
             </div>
-            <Button size="sm" className="bg-indigo-600" onClick={() => setActiveTab("credits")}>Buy Credits</Button>
           </div>
         </header>
 
@@ -173,43 +140,20 @@ export default function UserDashboard({ session, initialBusinessDetails, initial
               <h3 className="text-2xl font-bold">Credit Balance: {userCredits}</h3>
               <Card className="border-indigo-200 shadow-lg shadow-indigo-100/50">
                 <CardHeader>
-                  <CardTitle>Add Credits</CardTitle>
+                  <CardTitle>Daily Credits</CardTitle>
                   <CardDescription>
-                    Plans are removed for now. You can add as many credits as you want.
+                    Manual credit top-ups are removed. Your account automatically refreshes to 50 credits each day.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-5">
-                  <div className="grid gap-2">
-                    <Label htmlFor="credits">Credits to add</Label>
-                    <Input
-                      id="credits"
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={customCredits}
-                      onChange={(event) => setCustomCredits(event.target.value)}
-                      placeholder="Enter any credit amount"
-                    />
+                <CardContent className="space-y-4">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <p className="text-sm text-slate-600">Default daily credit allowance</p>
+                    <p className="mt-2 text-4xl font-black text-slate-900">50</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                    New balance after adding these credits:
-                    <span className="ml-2 font-bold text-slate-900">
-                      {userCredits + Math.max(0, Number(customCredits) || 0)}
-                    </span>
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                    Your current balance refreshes back to 50 once per day automatically.
                   </div>
                 </CardContent>
-                <CardFooter className="flex gap-3">
-                  <Button
-                    className="bg-indigo-600 hover:bg-indigo-700"
-                    disabled={isAddingCredits}
-                    onClick={() => handleBuyCredits(Number(customCredits))}
-                  >
-                    {isAddingCredits ? "Adding..." : "Add Credits"}
-                  </Button>
-                  <Button variant="outline" onClick={() => setCustomCredits("100")}>
-                    Quick Fill 100
-                  </Button>
-                </CardFooter>
               </Card>
             </div>
           )}

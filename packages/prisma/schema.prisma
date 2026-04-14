@@ -13,7 +13,8 @@ model User {
   email           String   @unique
   passwordHash    String?
   name            String?
-  credits         Int      @default(5)
+  credits         Int      @default(50)
+  lastCreditRefreshAt DateTime @default(now())
   businessDetails Json?
   createdAt       DateTime @default(now())
   
