@@ -25,7 +25,7 @@ interface AppState {
   currentInvoice: Partial<Invoice>;
   invoiceHistory: SavedInvoice[];
   setUserCredits: (credits: number) => void;
-  setBusinessDetails: (details: BusinessDetails) => void;
+  setBusinessDetails: (details: BusinessDetails | null) => void;
   setUserProfile: (profile: { userId: string; authUserId?: string; email: string; name?: string }) => void;
   addInvoice: (invoice: SavedInvoice) => void;
   setCurrentInvoice: (invoice: Partial<Invoice>) => void;

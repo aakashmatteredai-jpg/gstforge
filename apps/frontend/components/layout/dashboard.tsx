@@ -10,15 +10,19 @@ import { useRouter } from "next/navigation";
 import { purchaseCredits } from "../../lib/api";
 import { toast } from "sonner";
 import type { AuthSession } from "../../lib/auth";
+import type { BusinessDetails } from "@gstforge/types";
 
 type UserDashboardProps = {
   session: AuthSession;
+  initialBusinessDetails: BusinessDetails | null;
+  initialCredits: number;
 };
 
-export default function UserDashboard({ session }: UserDashboardProps) {
+export default function UserDashboard({ session, initialBusinessDetails, initialCredits }: UserDashboardProps) {
   const router = useRouter();
-  const { businessDetails, userCredits, setUserCredits, invoiceHistory, setUserProfile } = useStore();
+  const { businessDetails, userCredits, setUserCredits, invoiceHistory, setUserProfile, setBusinessDetails } = useStore();
   const [activeTab, setActiveTab] = useState("new-invoice");
+  const resolvedBusinessDetails = businessDetails ?? initialBusinessDetails;
 
   useEffect(() => {
     setUserProfile({
@@ -27,9 +31,16 @@ export default function UserDashboard({ session }: UserDashboardProps) {
       email: session.email,
       name: session.name ?? undefined,
     });
-  }, [session, setUserProfile]);
+    setUserCredits(initialCredits);
+  }, [initialCredits, session, setUserCredits, setUserProfile]);
 
-  if (!businessDetails) {
+  useEffect(() => {
+    if (initialBusinessDetails) {
+      setBusinessDetails(initialBusinessDetails);
+    }
+  }, [initialBusinessDetails, setBusinessDetails]);
+
+  if (!resolvedBusinessDetails) {
     return <OnboardingWizard />;
   }
 
@@ -41,14 +52,14 @@ export default function UserDashboard({ session }: UserDashboardProps) {
   ];
 
   const handleBuyCredits = async (credits: number, amount: number) => {
-    if (!businessDetails) {
+    if (!resolvedBusinessDetails) {
       toast.error("Complete onboarding before purchasing credits.");
       return;
     }
 
     try {
       const result = await purchaseCredits({
-        businessDetails,
+        businessDetails: resolvedBusinessDetails,
         creditsAdded: credits,
         amount,
       });

@@ -35,6 +35,14 @@ export type PurchaseCreditsResponse = {
   creditsRemaining: number;
 };
 
+export type SaveBusinessProfileResponse = {
+  user: {
+    id: string;
+    credits: number;
+    businessDetails: BusinessDetails;
+  };
+};
+
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as ApiErrorPayload | null;
@@ -69,4 +77,16 @@ export async function purchaseCredits(input: PurchaseCreditsInput) {
   });
 
   return parseResponse<PurchaseCreditsResponse>(response);
+}
+
+export async function saveBusinessProfile(businessDetails: BusinessDetails) {
+  const response = await fetch("/api/account/profile", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ businessDetails }),
+  });
+
+  return parseResponse<SaveBusinessProfileResponse>(response);
 }

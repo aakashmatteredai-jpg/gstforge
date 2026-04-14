@@ -6,10 +6,12 @@ import { BusinessDetailsSchema, BusinessDetails } from "@gstforge/types";
 import { useStore } from "../../hooks/use-store";
 import { toast } from "sonner";
 import { CheckCircle2 } from "lucide-react";
+import { saveBusinessProfile } from "../../lib/api";
 
 export function OnboardingWizard() {
   const [step, setStep] = useState(1);
-  const { setBusinessDetails } = useStore();
+  const { setBusinessDetails, setUserCredits } = useStore();
+  const [isSaving, setIsSaving] = useState(false);
   const [details, setDetails] = useState<Partial<BusinessDetails>>({
     name: "",
     gstin: "",
@@ -21,14 +23,18 @@ export function OnboardingWizard() {
   const nextStep = () => setStep((s) => s + 1);
   const prevStep = () => setStep((s) => s - 1);
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     try {
+      setIsSaving(true);
       const validated = BusinessDetailsSchema.parse(details);
+      const result = await saveBusinessProfile(validated);
       setBusinessDetails(validated);
+      setUserCredits(result.user.credits);
       toast.success("Business profile completed!");
-      // Redirect or update store
     } catch (err: any) {
-      toast.error(err.errors?.[0]?.message || "Invalid details");
+      toast.error(err?.errors?.[0]?.message || err?.message || "Invalid details");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -126,7 +132,9 @@ export function OnboardingWizard() {
           {step < 3 ? (
             <Button onClick={nextStep} className="bg-indigo-600 hover:bg-indigo-700">Continue</Button>
           ) : (
-            <Button onClick={handleComplete} className="bg-green-600 hover:bg-green-700">Finish Onboarding</Button>
+            <Button onClick={handleComplete} className="bg-green-600 hover:bg-green-700" disabled={isSaving}>
+              {isSaving ? "Saving..." : "Finish Onboarding"}
+            </Button>
           )}
         </CardFooter>
       </Card>
