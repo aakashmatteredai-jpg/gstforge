@@ -30,8 +30,15 @@ const footerItems = [
   { icon: HelpCircle, label: "Support", href: "/support" },
 ];
 
-export function Sidebar() {
+type SidebarProps = {
+  totalCredits: number;
+  totalUsers: number;
+};
+
+export function Sidebar({ totalCredits, totalUsers }: SidebarProps) {
   const pathname = usePathname();
+  const creditCap = Math.max(totalUsers * 5, 1);
+  const creditProgress = Math.min(100, Math.round((totalCredits / creditCap) * 100));
 
   return (
     <div className="flex flex-col h-full w-64 bg-card border-r">
@@ -80,13 +87,13 @@ export function Sidebar() {
         </div>
         
         <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
-          <p className="text-xs font-bold text-primary mb-1 uppercase tracking-wider">Credits</p>
+          <p className="text-xs font-bold text-primary mb-1 uppercase tracking-wider">Credits Pool</p>
           <div className="flex items-center justify-between">
-            <span className="text-lg font-black italic">42 / 50</span>
+            <span className="text-lg font-black italic">{totalCredits} / {creditCap}</span>
             <Link href="/topup" className="text-[10px] font-bold underline text-primary">RELOAD</Link>
           </div>
           <div className="w-full h-1.5 bg-primary/20 rounded-full mt-2 overflow-hidden">
-            <div className="bg-primary h-full w-[84%]"></div>
+            <div className="bg-primary h-full" style={{ width: `${creditProgress}%` }}></div>
           </div>
         </div>
 

@@ -1,5 +1,12 @@
 import { prisma } from "@gstforge/prisma";
-import { formatCurrency } from "@gstforge/utils";
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
 
 function startOfDay(date = new Date()) {
   const value = new Date(date);
